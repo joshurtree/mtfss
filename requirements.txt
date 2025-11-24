@@ -1,0 +1,10 @@
+# MTFSS requirements
+# No external dependencies required - uses Python standard library only
+# imaplib, email, re are all built-in modules
+
+# Development dependencies (optional)
+pytest>=7.0.0
+black>=22.0.0
+flake8>=4.0.0
+pylint>=2.15.0
+isort>=5.10.0

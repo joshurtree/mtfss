@@ -1,0 +1,67 @@
+{
+    "name": "MTFSS Development Container",
+    "image": "mcr.microsoft.com/devcontainers/python:3.11",
+    "features": {
+        "ghcr.io/devcontainers/features/git:1": {},
+        "ghcr.io/devcontainers/features/github-cli:1": {}
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.pylint",
+                "ms-python.black-formatter",
+                "ms-python.isort",
+                "ms-toolsai.jupyter",
+                "redhat.vscode-yaml",
+                "ms-vscode.test-adapter-converter",
+                "littlefoxteam.vscode-python-test-adapter"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/local/bin/python",
+                "python.testing.pytestEnabled": true,
+                "python.testing.unittestEnabled": true,
+                "python.testing.pytestArgs": [
+                    "."
+                ],
+                "python.testing.unittestArgs": [
+                    "-v",
+                    "-s",
+                    ".",
+                    "-p",
+                    "test_*.py"
+                ],
+                "python.linting.enabled": true,
+                "python.linting.pylintEnabled": true,
+                "python.formatting.provider": "black",
+                "python.formatting.blackArgs": [
+                    "--line-length=100"
+                ],
+                "python.sortImports.args": [
+                    "--profile",
+                    "black"
+                ],
+                "python.linting.pylintArgs": [
+                    "--max-line-length=100"
+                ],
+                "editor.formatOnSave": true,
+                "editor.codeActionsOnSave": {
+                    "source.organizeImports": "explicit"
+                }
+            }
+        }
+    },
+    "postCreateCommand": "pip install -r requirements.txt || true",
+    "remoteUser": "vscode",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+    "workspaceFolder": "/workspace",
+    "mounts": [
+        "source=${localWorkspaceFolder}/.vscode,target=/workspace/.vscode,type=bind"
+    ],
+    "containerEnv": {
+        "PYTHONPATH": "/workspace"
+    },
+    "forwardPorts": [],
+    "portsAttributes": {},
+    "postStartCommand": "echo 'MTFSS Dev Container Ready! Use the following commands:' && echo '  python mtfss.py --help' && echo '  python -m pytest test_mtfss.py -v' && echo '  python -m unittest test_mtfss -v'"
+}
