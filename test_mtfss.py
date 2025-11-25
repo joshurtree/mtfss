@@ -5,7 +5,6 @@ Test suite for MTFSS - Multi-Tenant Folder Sorting Sieve
 
 import email
 import email.message
-import tempfile
 import unittest
 from unittest.mock import MagicMock, Mock, patch
 
@@ -94,12 +93,12 @@ class TestMTFSSProcessor(unittest.TestCase):
     def test_determine_folder_primary_domain(self):
         """Test folder determination for primary domain."""
         folder = self.processor.determine_folder("john", "example.com")
-        self.assertEqual(folder, "john")
+        self.assertEqual(folder, "Inbox.John")
 
     def test_determine_folder_other_domain(self):
         """Test folder determination for other domains."""
         folder = self.processor.determine_folder("john", "other.com")
-        self.assertEqual(folder, "john@other.com")
+        self.assertEqual(folder, "Inbox.John@other_com")
 
     def test_determine_folder_malformed(self):
         """Test folder determination for malformed addresses."""
@@ -112,17 +111,17 @@ class TestMTFSSProcessor(unittest.TestCase):
         folder = self.processor.determine_folder("", "example.com")
         self.assertEqual(folder, "unmatched")
 
-    def test_determine_folder_ignored_user(self):
-        """Test folder determination for ignored users."""
-        # Mock folder_exists to return True for ignore folder
+    def test_determine_folder_archived_user(self):
+        """Test folder determination for archived users."""
+        # Mock folder_exists to return True for archive folder
         with patch.object(self.processor, 'folder_exists') as mock_exists:
-            mock_exists.side_effect = lambda folder: folder == "ignore/john"
+            mock_exists.side_effect = lambda folder: folder == "archived.John"
 
             folder = self.processor.determine_folder("john", "example.com")
-            self.assertEqual(folder, "ignore/john")
+            self.assertEqual(folder, "archived.John")
 
             # Verify folder_exists was called
-            mock_exists.assert_called_with("ignore/john")
+            mock_exists.assert_called_with("archived.John")
 
     def test_folder_exists_true(self):
         """Test folder existence check when folder exists."""
@@ -175,12 +174,12 @@ class TestMTFSSProcessor(unittest.TestCase):
         """Test successful email move."""
         # Mock folder existence and creation
         with patch.object(self.processor, 'folder_exists', return_value=True):
-            self.mock_connection.move.return_value = ('OK', [])
+            self.mock_connection.copy.return_value = ('OK', [])
 
             result = self.processor.move_email("123", "target_folder")
             self.assertTrue(result)
 
-            self.mock_connection.move.assert_called_with(
+            self.mock_connection.copy.assert_called_with(
                 "123", "target_folder")
 
     def test_move_email_create_folder_first(self):
@@ -188,7 +187,7 @@ class TestMTFSSProcessor(unittest.TestCase):
         with patch.object(self.processor, 'folder_exists', return_value=False), \
                 patch.object(self.processor, 'create_folder', return_value=True):
 
-            self.mock_connection.move.return_value = ('OK', [])
+            self.mock_connection.copy.return_value = ('OK', [])
 
             result = self.processor.move_email("123", "new_folder")
             self.assertTrue(result)
@@ -196,7 +195,7 @@ class TestMTFSSProcessor(unittest.TestCase):
     def test_move_email_failure(self):
         """Test failed email move."""
         with patch.object(self.processor, 'folder_exists', return_value=True):
-            self.mock_connection.move.return_value = ('NO', ['Error'])
+            self.mock_connection.copy.return_value = ('NO', ['Error'])
 
             result = self.processor.move_email("123", "target_folder")
             self.assertFalse(result)
@@ -263,6 +262,10 @@ class TestMTFSSProcessor(unittest.TestCase):
         # Mock IMAP responses
         self.mock_connection.select.return_value = ('OK', [])
         self.mock_connection.search.return_value = ('OK', [b'1 2 3'])
+        self.mock_connection.store.return_value = ('OK', [])
+        self.mock_connection.copy.return_value = ('OK', [])
+        self.mock_connection.list.return_value = ('OK', [])
+        self.mock_connection.create.return_value = ('OK', [])
 
         # Mock email messages
         test_email = email.message.EmailMessage()
@@ -286,7 +289,13 @@ class TestMTFSSProcessor(unittest.TestCase):
     def test_process_inbox_no_messages(self):
         """Test processing empty inbox."""
         self.mock_connection.select.return_value = ('OK', [])
-        self.mock_connection.search.return_value = ('OK', [b''])
+        self.mock_connection.search.return_value = ('OK', [b'1 2 3'])
+        self.mock_connection.store.return_value = ('OK', [])
+        self.mock_connection.copy.return_value = ('OK', [])
+        self.mock_connection.list.return_value = ('OK', [])
+        self.mock_connection.create.return_value = ('OK', [])
+        self.mock_connection.fetch.return_value = (
+            'OK', ["test", "test2", "test3"])
 
         # Should not raise exception
         self.processor.process_inbox()
@@ -330,7 +339,7 @@ class TestEmailParsing(unittest.TestCase):
 
         # Folder determination should use full user part
         folder = self.processor.determine_folder("user+project", "test.com")
-        self.assertEqual(folder, "user+project")
+        self.assertEqual(folder, "Inbox.User+project")
 
     def test_international_domains(self):
         """Test handling of international domain names."""
@@ -339,8 +348,8 @@ class TestEmailParsing(unittest.TestCase):
         self.assertEqual(domain, "münchen.de")
 
 
-class TestIgnoreFunctionality(unittest.TestCase):
-    """Test cases for ignore functionality."""
+class TestArchiveFunctionality(unittest.TestCase):
+    """Test cases for archive functionality."""
 
     def setUp(self):
         """Set up test fixtures."""
@@ -349,32 +358,32 @@ class TestIgnoreFunctionality(unittest.TestCase):
         self.mock_connection = Mock()
         self.processor.connection = self.mock_connection
 
-    def test_ignore_folder_detection(self):
-        """Test detection of ignored users."""
-        # Mock folder_exists to simulate ignore folder existence
+    def test_archive_folder_detection(self):
+        """Test detection of archived users."""
+        # Mock folder_exists to simulate archive folder existence
         with patch.object(self.processor, 'folder_exists') as mock_exists:
-            mock_exists.side_effect = lambda folder: folder == "ignore/spam"
+            mock_exists.side_effect = lambda folder: folder == "archived.Spam"
 
-            # Should route to ignore folder
+            # Should route to archive folder
             folder = self.processor.determine_folder("spam", "test.com")
-            self.assertEqual(folder, "ignore/spam")
+            self.assertEqual(folder, "archived.Spam")
 
-            # Should not route non-ignored users to ignore
+            # Should not route non-archived users to archive
             folder = self.processor.determine_folder("good", "test.com")
-            self.assertEqual(folder, "good")
+            self.assertEqual(folder, "Inbox.Good")
 
-    def test_ignore_folder_creation(self):
-        """Test that ignore folders can be created when needed."""
+    def test_archived_folder_creation(self):
+        """Test that archived folders can be created when needed."""
         with patch.object(self.processor, 'folder_exists', return_value=False), \
                 patch.object(self.processor, 'create_folder', return_value=True) as mock_create:
 
-            self.mock_connection.move.return_value = ('OK', [])
+            self.mock_connection.copy.return_value = ('OK', [])
 
-            result = self.processor.move_email("123", "ignore/newuser")
+            result = self.processor.move_email("123", "archived.newuser")
             self.assertTrue(result)
 
-            # Should create the ignore folder
-            mock_create.assert_called_with("ignore/newuser")
+            # Should create the archive folder
+            mock_create.assert_called_with("archived.newuser")
 
 
 if __name__ == '__main__':

@@ -322,14 +322,11 @@ def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
         description='MTFSS - Multi-Tenant Folder Sorting Sieve')
-    parser.add_argument('-s', '--server', required=True,
-                        help='IMAP server hostname')
-    parser.add_argument('-u', '--username', required=True,
-                        help='IMAP username')
+    parser.add_argument('-s', '--server', help='IMAP server hostname')
+    parser.add_argument('-u', '--username', help='IMAP username')
     parser.add_argument('-p', '--password',
                         help='IMAP password (or set IMAP_PASSWORD env var)')
     parser.add_argument('-d', '--domain',
-                        required=True,
                         help='Primary domain for user folder routing')
     parser.add_argument('-i', '--interval', type=int, default=300,
                         help='Check interval in seconds (default: 300)')
